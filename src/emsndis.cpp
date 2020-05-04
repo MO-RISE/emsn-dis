@@ -39,16 +39,11 @@ float pitch_rot, float roll_rot, std::string dis_entity, std::string text)
       text);
 }
 
-/*
-void EmsnDis::send_state_pdu(std::string text)
-{
-  std::cout << text << "Sent State PDU\n";
-}
-*/
 
 void EmsnDis::send_stop_pdu()
 {
+    dis.attr("send_stop_pdu")();
     //py::none o_a = dis.attr("send_stop_pdu")();
-    std::cout << "Start Pdu\n";
+    //std::cout << "Start Pdu\n";
 }
 

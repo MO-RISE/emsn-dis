@@ -406,6 +406,7 @@ class EmsnDis:
 			'requestId':self.requests,
 		}
 		self._send_pdu(pdu_stop)
+		print('Sent STOP PDU')
 
 	def create_entity(self, entity):
 		pass
