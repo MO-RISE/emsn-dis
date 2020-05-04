@@ -200,7 +200,7 @@ class EmsnDis:
 	#	lat, lon, height = gps.ecef2lla(ecef)
 	#	return [lat, lon]
 
-	def send_entity_state_pdu(self, entity, dis_entity='generic_ship_container_class_medium'):
+	def send_entity_state_pdu_old(self, entity, dis_entity='generic_ship_container_class_medium'):
 		"""Send the state of an entity.
 
 		Arguments:
@@ -276,6 +276,106 @@ class EmsnDis:
 		            'psi':entity.ang_vel[0],
 		            'theta':entity.ang_vel[1],
 		            'phi':entity.ang_vel[2],
+		        },
+		    },
+		    'entityAppearance':'0'*32,
+		    'capabilities':[False]*32,
+		}
+		self._send_pdu(entity_state_pdu)
+
+	def send_entity_state_pdu(self, idn, lat, lon, alt, yaw, pitch,
+		roll, u, v, w, yaw_rot, pitch_rot, roll_rot, dis_entity, text):
+		"""Send the state of an entity.
+
+		Arguments:
+
+			id:
+				Unique identification number for the entity.
+			lat:
+				Latitude in WGS84 (deg).
+			lon:
+				Longitude in WGS84 (deg).
+			alt:
+				Altitude in WGS84 (m).
+			yaw:
+				Yaw angle (rad)
+			pitch:
+				Pitch angle (rad)
+			roll:
+				Roll anlge (rad)
+			u:
+				Longitudinal speed (m/s).
+			v:
+				Transverse speed (m/s).
+			w:
+				Upward speed (m/s).
+			yaw_rot:
+				Yaw angle rate of turn (rad/s).
+			pitch_rot:
+				Pitch angle rate of turn (rad/s).
+			roll_rot:
+				Roll angle rate of turn (rad/s).
+			dis_entity (str):
+				Text used as a key for the dictionary containing the custom DIS
+				entities for the EMSN (default value = 'generic_ship_contianer_class_medium').
+			text (str):
+				Text for identifying the entity (max 11 characters).
+
+		Output:
+
+			NONE
+
+		"""
+		position = [lat, lon, alt]
+		attitude = [yaw, pitch, roll]
+		XYZ, euler = geo.to_dis(position, attitude)
+		X, Y, Z = XYZ
+		psi, theta, phi = euler
+		if len(text) > 11:
+			raise Exception('The text cannot have more than 11 characters.')
+		characters = [ord(i) for i in text] + [0]*(11 - len(text))
+		entity_state_pdu = {
+		    'pduHeader': self._make_pdu_header(1,1,144),
+		    'entityId': {
+		        'site': self.siteId,
+		        'application':self.applicationId,
+		        'entity':idn,
+		    },
+		    'forceId':1,
+		    'numberOfArticulationParameters':0,
+		    'entityType': emsn_dis_entities[dis_entity],
+		    'alternativeEntityType': emsn_dis_entities[dis_entity],
+		    'entityLinearVelocity': {
+		        'x':u,
+		        'y':v,
+		        'z':w,
+		    },
+		    'entityLocation': {
+		        'x':X,
+		        'y':Y,
+		        'z':Z,
+		    },
+		    'entityOrientation': {
+		        'psi':psi,
+		        'theta':theta,
+		        'phi':phi,
+		    },
+		    'entityMarking': {
+		        'characterSet':1,
+		        'characters':characters,
+		    },
+		    'deadReckoningParameters':{
+		        'deadReckoningAlgorithm':4, # High Speed or Maneuvering Entity with Extrapolation of Orientation
+		        'otherParameters': '0'*120, # Zero indicates "None"
+		        'entityLinearAcceleration': {
+		            'x':0,
+		            'y':0,
+		            'z':0,
+		        },
+		        'entityAngularVelocity':{
+		            'psi':yaw_rot,
+		            'theta':pitch_rot,
+		            'phi':roll_rot,
 		        },
 		    },
 		    'entityAppearance':'0'*32,

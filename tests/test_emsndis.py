@@ -96,8 +96,8 @@ def test_send_start_pdu():
 	assert pdu['receivingEntityId']['application'] == 65535
 	assert pdu['receivingEntityId']['entity'] == 65535
 
-def test_send_entity_state_pdu():
-	dis1.send_entity_state_pdu(dummy_entity)
+def test_send_entity_state_pdu_old():
+	dis1.send_entity_state_pdu_old(dummy_entity)
 	pdus = dis2.receive_pdus()
 	assert len(pdus) == 1
 	pdu = pdus[0]
@@ -110,6 +110,39 @@ def test_send_entity_state_pdu():
 	assert pdu['entityOrientation']['psi'] == approx(psi)
 	assert pdu['entityOrientation']['theta'] == approx(theta)
 	assert pdu['entityOrientation']['phi'] == approx(phi)
+
+def test_send_entity_state_pdu():
+	idn = 989
+	lat = 19
+	lon = 12.1
+	alt = 0
+	yaw = 1.1
+	pitch = 1.2
+	roll = 1.3
+	u = 10
+	v = 0.1
+	w = 0
+	yaw_rot = 0.1
+	pitch_rot = 0.3
+	roll_rot = 0.2
+	text = 'Hello'
+	dis_entity = 'generic_ship_container_class_small'
+	dis1.send_entity_state_pdu(idn, lat, lon, alt, yaw, pitch, roll,
+		u, v, w, yaw_rot, pitch_rot, roll_rot, dis_entity, text)
+	pdus = dis2.receive_pdus()
+	assert len(pdus) == 1
+	pdu = pdus[0]
+	XYZ, euler = geoutils.to_dis([lat, lon, alt], [yaw, pitch, roll])
+	X, Y, Z = XYZ
+	psi, theta, phi = euler
+	assert pdu['entityLocation']['x'] == approx(X)
+	assert pdu['entityLocation']['y'] == approx(Y)
+	assert pdu['entityLocation']['z'] == approx(Z)
+	assert pdu['entityOrientation']['psi'] == approx(psi)
+	assert pdu['entityOrientation']['theta'] == approx(theta)
+	assert pdu['entityOrientation']['phi'] == approx(phi)
+	assert pdu['entityMarking']['characters'] == [ord(i) for i in text] + \
+		[0]*(11 - len(text))
 
 def test_send_stop_pdu():
 	dis1.send_stop_pdu()

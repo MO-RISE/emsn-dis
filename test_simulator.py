@@ -34,6 +34,25 @@ import emsndis.geoutils as geo
 Entity = namedtuple('Entity','id position attitude lin_vel ang_vel')
 entity_1 = Entity(1, [57.66, 11.76, 0],[0,0,0], [0,0,0], [0,0,0])
 
+state_1 = {
+    'idn': 1,
+    'lat': 57.66,
+    'lon': 11.76,
+    'alt': 0,
+    'yaw': 0,
+    'pitch': 0,
+    'roll': 0,
+    'u': 0,
+    'v': 0,
+    'w': 0,
+    'yaw_rot': 0,
+    'pitch_rot': 0,
+    'roll_rot': 0,
+    'dis_entity': 'generic_ship_container_class_small',
+    'text': 'Hi Reto',
+}
+
+
 class Simulator:
 
     def __init__(self, siteId, applicationId, excerciseId, run_time, entity,**kwargs):
@@ -53,14 +72,7 @@ class Simulator:
                 for pdu in pdus:
                     self.print_pdu(pdu)
             if time.time() - self.latest_state_update > 1:
-                #self.entity.attitude[0] += 5
-                #self.entity.attitude[2] += self.rstep
-                #if self.entity.attitude[0] > 360:
-                #    self.entity.attiude[0] = 0
-                #if abs(self.entity.attitude[2]) > 45:
-                #    self.rstep *= -1
-                #print('attitude', self.entity.attitude)
-                self.dis.send_entity_state_pdu(self.entity)
+                self.dis.send_entity_state_pdu(**state_1)
                 self.latest_state_update = time.time()
             if time.time() - self.start_time > self.run_time:
                 self.dis.send_stop_pdu()

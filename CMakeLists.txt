@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.0)
+
 project(emsndis_cpp)
-#add_library(emsndis SHARED src/emsndis.cpp)
+
 add_subdirectory(pybind11)
-add_executable(emsndis_cpp src/mainpy.cpp)
-target_link_libraries(emsndis_cpp PRIVATE pybind11::embed)
+
+add_library(emsndis STATIC src/emsndis.cpp)
+target_link_libraries(emsndis PUBLIC pybind11::embed)
+target_compile_options(emsndis PRIVATE -fvisibility=hidden)
+
+add_executable(main src/main.cpp)
+target_compile_options(main PRIVATE -fvisibility=hidden)
+target_link_libraries(main emsndis)
+
