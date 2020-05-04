@@ -79,6 +79,8 @@ class EmsnDis:
 			'entity':0,
 		}
 
+	def hello(self):
+		print(f'Hello, my applicationId is {self.applicationId}')
 
 	def _make_pdu_header(self, pduType, protocolFamily, length):
 		"""Make a PDU header

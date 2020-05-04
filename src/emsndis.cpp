@@ -21,16 +21,15 @@ EmsnDis::EmsnDis(int siteId, int applicationId, int exerciseId)
   py::object EmsnDis = py::module::import("emsndis").attr("EmsnDis");
 
   // Construct an instance
-  py::object dis = EmsnDis(siteId, applicationId, exerciseId);
+  dis = EmsnDis(siteId, applicationId, exerciseId);
 
 }
 void EmsnDis::send_start_pdu()
 {
-    py::none o_a = dis.attr("send_start_pdu")();
-    py::print("aaaa");
+    dis.attr("send_start_pdu")();
     //std::cout << "Start Pdu\n";
 }
-/*
+
 void EmsnDis::send_state_pdu(int idn, float lat, float lon, float alt,
 float yaw, float pitch, float roll, float u, float v, float w, float yaw_rot,
 float pitch_rot, float roll_rot, std::string dis_entity, std::string text)
@@ -39,12 +38,13 @@ float pitch_rot, float roll_rot, std::string dis_entity, std::string text)
       yaw, pitch, roll, u, v, w, yaw_rot, pitch_rot, roll_rot, dis_entity,
       text);
 }
-*/
 
+/*
 void EmsnDis::send_state_pdu(std::string text)
 {
   std::cout << text << "Sent State PDU\n";
 }
+*/
 
 void EmsnDis::send_stop_pdu()
 {
