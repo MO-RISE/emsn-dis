@@ -92,9 +92,39 @@ clockTimeEncoding = [
     ['timePastHour','32-bit_unsigned_integer'],
 ]
 
-# PDU encodings
-# ------------- 
+radioEntityTypeEncoding = [
+    ['entityKind','8-bit_enumeration'],
+    ['domain','8-bit_enumeration'],
+    ['country','16-bit_enumeration'],
+    ['category','8-bit_enumeration'],
+    ['nomenclatureVersion','8-bit_enumeration'],
+    ['nomenclature','16-bit_enumeration']
+]
 
+antennaLocationEncoding = [
+    ['X','64-bit_float'],
+    ['Y','64-bit_float'],
+    ['Z','64-bit_float']
+]
+
+relativeAntennaLocationEncoding = [
+    ['x','32-bit_float'],
+    ['y','32-bit_float'],
+    ['z','32-bit_float']
+]
+
+modulationTypeEncoding = [
+    ['spreadSpectrum','16xboolean'],
+    ['major','16-bit_enumeration'],
+    ['detail','16-bit_enumeration'],
+    ['system','16-bit_enumeration']
+]
+
+# PDU encodings
+# -------------
+
+# Entity State PDU Encoding for:
+#   n = 0 (number of articulation parameters)
 entityStatePduEncoding = [
     ['pduHeader',pduHeaderEncoding],
     ['entityId',entityIdEncoding],
@@ -131,11 +161,62 @@ stopPduEncoding = [
     ['requestId','32-bit_unsigned_integer'],
 ]
 
+# Transmitter PDU encoding for:
+#   l = 0 (number fo modulation parameters)
+#   L = 0 (number of antenna pattern parameters)
+transmitterPduEncoding = [
+    ['pduHeader',pduHeaderEncoding],
+    ['entityId',entityIdEncoding],
+    ['radioId','16-bit_unsigned_integer'],
+    ['radioEntityType',radioEntityTypeEncoding],
+    ['transmitState','8-bit_enumeration'],
+    ['inputSource','8-bit_enumeration'],
+    ['padding','16-bits'],
+    ['antennaLocation',antennaLocationEncoding],
+    ['relativeAntennaLocation',relativeAntennaLocationEncoding],
+    ['antennaPatternType','16-bit_enumeration'],
+    ['antennaPatternLength','16-bit_unsigned_integer'],
+    ['frequency','64-bit_unsigned_integer'],
+    ['transmitFrequencyBandwidth','32-bit_float'],
+    ['power','32-bit_float'],
+    ['modulationType',modulationTypeEncoding],
+    ['cryptoSystem','16-bit_enumeration'],
+    ['cryptoKeyId','16-bit_unsigned_integer'],
+    ['lengthOfModulationParameters','8-bit_unsigned_integer'],
+    ['padding2','24-bits']
+]
+
+receiverPduEnconding = [
+    ['pduHeader', pduHeaderEncoding],
+    ['entityId', entityIdEncoding],
+    ['radioId', '16-bit_unsigned_integer'],
+    ['receiverState','16-bit_enumeration'],
+    ['padding', '16-bits'],
+    ['receivedPower', '32-bit_float'],
+    ['transmitterEntityId', entityIdEncoding],
+    ['transmitterRadioId', '16-bit_unsigned_integer']
+]
+
+signalPduEncoding = [
+    ['pduHeader', pduHeaderEncoding],
+    ['entityId', entityIdEncoding],
+    ['radioId', '16-bit_unsigned_integer'],
+    ['encodingScheme', '16-bits'],
+    ['TDLtype', '16-bit_enumeration'],
+    ['sampleRate', '32-bit_integer'],
+    ['dataLength', '16-bit_integer'],
+    ['samples', '16-bit_integer'],
+    ['data','raw_bytes'],
+]
+
 # Map of PDU types to PDU encodings
 pdu_encodings = {
     1:entityStatePduEncoding,
     13:startPduEncoding,
     14:stopPduEncoding,
+    25:transmitterPduEncoding,
+    26:signalPduEncoding,
+    27:receiverPduEnconding,
 }
 
 # (Format, Size in Bytes)
@@ -165,7 +246,7 @@ def _parse_encoding(raw_encoding):
         num: number of repetitions
         rep: representation
         size: size of the representation in bytes
-        
+
     """
     # Number of repetitions
     num = 1
@@ -184,6 +265,10 @@ def _parse_encoding(raw_encoding):
         rep = 'boolean'
         size = int(num//8)
         num = 1
+    elif 'raw_bytes' in encoding:
+        rep = 'raw_bytes'
+        size = 4 # TODO implement this as a class? to have some memory?
+        num = 1
     else:
         rep, size = format_strings_dictionary[encoding]
     return (num, rep, size)
@@ -196,12 +281,14 @@ def _serialize_variable(stream, value, encoding, pdu_length):
         _to_bytes = lambda v: BitArray('0b' + v).bytes
     elif rep == 'boolean':
         _to_bytes = lambda v: BitArray('0b'+''.join(['1' if i else '0' for i in v])).bytes
+    elif rep == 'raw_bytes':
+        _to_bytes = lambda v: v
     else:
         _to_bytes = lambda v: struct.pack(rep, v)
 
     if num == 1:
         value = [value]
- 
+
     for i in range(num):
         val = _to_bytes(value[i])
         pdu_length.append(len(val))
@@ -221,7 +308,7 @@ def _serialize_field(stream, field_values, field_encoding, pdu_length):
 
 def serialize(pdu):
     """Serialize a PDU dict into a binary stream.
-        
+
     Usage
     -----
     pdu = {
@@ -240,7 +327,7 @@ def serialize(pdu):
     stream = BytesIO()
     pdu_length = []
     pduType = pdu['pduHeader']['pduType']
-    
+
     if pduType not in pdu_encodings:
         raise Exception(f"Error: PDU type {pduType} is not in the list of PDU encodings.")
 
@@ -265,7 +352,7 @@ def serialize(pdu):
 
 def _deserialize_variable(stream, name, encoding):
     """ Deserialize a variable into a dict.
-    """    
+    """
     num, rep, size = _parse_encoding(encoding)
     values = []
     for i in range(num):
@@ -276,18 +363,20 @@ def _deserialize_variable(stream, name, encoding):
             val = BitArray(stream.read(size)).bin
             vals = [True if i == '1' else False for i in val]
             values.append(vals)
+        elif rep == 'raw_bytes':
+            values.append(stream.read(size))
         else:
             values.append(struct.unpack(rep,stream.read(size))[0])
     value = values[0] if num == 1 else values
     return {name: value}
- 
+
 def _deserialize_field(stream, field_name, field_encoding):
     """ Deserialize a field into a dict.
     """
     field_dict = {}
     for (var_name, var_encoding) in field_encoding:
         if type(var_encoding) is str:
-            var_dict = _deserialize_variable(stream, var_name, var_encoding) 
+            var_dict = _deserialize_variable(stream, var_name, var_encoding)
         else:
             var_dict = _deserialize_field(stream, var_name, var_encoding)
         field_dict.update(var_dict)
@@ -295,7 +384,7 @@ def _deserialize_field(stream, field_name, field_encoding):
 
 def deserialize(data):
     """Deserialize a data package into a PDU dict.
-    
+
     Usage
     -------
     pdu = deserialize(data)
@@ -308,7 +397,7 @@ def deserialize(data):
     pdu = _deserialize_field(stream,'pduHeader',pduHeaderEncoding)
 
     # Check the PDU's protocol version is 5
-    pduProtocolVersion = pdu['pduHeader']['protocolVersion']
+    # pduProtocolVersion = pdu['pduHeader']['protocolVersion']
     #if pduProtocolVersion != 5:
     #    raise Exception(f'Deserialized PDU is {pduProtocolVersion}, it shold be 5.')
 
@@ -408,7 +497,7 @@ if __name__ == '__main__':
         'entityAppearance': '1'*32,
         'capabilities':[False]*32,
     }
-   
+
     s = serialize(pdu_example)
     #len(s)
     data = s.getvalue()

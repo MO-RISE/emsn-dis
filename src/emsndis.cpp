@@ -6,7 +6,8 @@ namespace py = pybind11;
 
 EmsnDis::EmsnDis(int siteId, int applicationId, int exerciseId)
 {
-
+  // Start the Python interpreter and keep alive
+  //py::scoped_interpreter guard{};
 
   // Modify the systems path:
   //  sys.path.append(os.path.dirname(os.getcwd()))

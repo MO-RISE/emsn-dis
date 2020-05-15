@@ -23,34 +23,34 @@ def rad2deg(rad):
 def deg2rad(deg):
   return deg * np.pi / 180
 
-def lla2xyz(lla):
-  """Transform polar-type (longitude, latitude, altitude) cooordinates to
+def lla2XYZ(lla):
+  """Transform polar-type (latitude, longitude, altitude) cooordinates to
   Earth Centered Earth Fixed (ECEF) coordinates (X, Y, Z) using the geodetic
   WGS84.
 
   Arguments:
 
     lla (tuple)
-      Contains: (longitude (deg), latitude(deg), altitude (m))
+      Contains: (latitude(deg), longitude(deg), altitude (m))
 
   Output:
-     (x (m), y (m), z (m))
+     (X (m), Y (m), Z (m))
 
   Usage:
 
-    >>> lla2xyz((0,0,0))
+    >>> lla2XYZ((0,0,0))
     (6378137.0,0,0)
   """
   lat = deg2rad(lla[0])
   lon = deg2rad(lla[1])
   h = lla[2]
-  x = (a / np.sqrt(np.cos(lat)**2 + (b**2 / a**2) * np.sin(lat)**2) + h) * \
+  X = (a / np.sqrt(np.cos(lat)**2 + (b**2 / a**2) * np.sin(lat)**2) + h) * \
     np.cos(lat) * np.cos(lon)
-  y = (a / np.sqrt(np.cos(lat)**2 + (b**2 / a**2) * np.sin(lat)**2) + h) * \
+  Y = (a / np.sqrt(np.cos(lat)**2 + (b**2 / a**2) * np.sin(lat)**2) + h) * \
     np.cos(lat) * np.sin(lon)
-  z = (b / np.sqrt((a**2 / b**2) * np.cos(lat)**2 + np.sin(lat)**2) + h) * \
+  Z = (b / np.sqrt((a**2 / b**2) * np.cos(lat)**2 + np.sin(lat)**2) + h) * \
     np.sin(lat)
-  return (x, y, z)
+  return (X, Y, Z)
 
 def xyz2lla(xyz, tolerance=1e-9):
   x, y, z = xyz
@@ -130,7 +130,7 @@ def to_dis(position, attitude, deg=True):
   xyz_global = ((1,0,0),(0,1,0),(0,0,1))
 
   euler = get_euler(xyz_global, xyz_local)
-  return (lla2xyz(position), euler)
+  return (lla2XYZ(position), euler)
 
 def from_dis(xyz, euler, deg=True):
   lat, lon, alt = xyz2lla(xyz)
@@ -141,6 +141,43 @@ def from_dis(xyz, euler, deg=True):
   if deg:
     attitude = [rad2deg(a) for a in attitude]
   return (lat, lon, alt), attitude
+
+def xyz2XYZ(position, attitude, p, deg=True):
+  """
+  Transform the coordinates of a point in the DIS local coordinate system
+  (xyz) to the DIS world coordinate system (XYZ).
+
+  Arguments:
+  -----------
+
+  position:
+    Position of an entity in as a (latitude, longitude, altitude) tuple.
+    Latitude and longitude in degrees and altitude in meters.
+
+  attitude:
+    Orientation of an entity with respect to its local coordinate system
+    as (yaw, pitch, roll) angles in radians.
+
+  xyz:
+    Coordinates of a point in the local coordinate system of an entity.
+    All coordinates in meters.
+
+  Returns:
+  --------
+
+  XYZ:
+    Coordinates of the point in the DIS world coordinate system.
+
+  """
+  lat, lon, alt = position
+  dx, dy, dz = p
+  if deg:
+    attitude = [deg2rad(a) for a in attitude]
+  XYZ = lla2XYZ(position)
+  ned = get_ned(lat, lon)
+  x, y, z = rotate_zyx(ned, attitude)
+  XYZp = np.array(XYZ) + x*dx + y*dy + z*dz
+  return XYZp
 
 
 def rotate_zyx(cs, euler):

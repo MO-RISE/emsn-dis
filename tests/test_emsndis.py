@@ -96,20 +96,6 @@ def test_send_start_pdu():
 	assert pdu['receivingEntityId']['application'] == 65535
 	assert pdu['receivingEntityId']['entity'] == 65535
 
-def test_send_entity_state_pdu_old():
-	dis1.send_entity_state_pdu_old(dummy_entity)
-	pdus = dis2.receive_pdus()
-	assert len(pdus) == 1
-	pdu = pdus[0]
-	XYZ, euler = geoutils.to_dis(dummy_entity.position, dummy_entity.attitude)
-	X, Y, Z = XYZ
-	psi, theta, phi = euler
-	assert pdu['entityLocation']['x'] == approx(X)
-	assert pdu['entityLocation']['y'] == approx(Y)
-	assert pdu['entityLocation']['z'] == approx(Z)
-	assert pdu['entityOrientation']['psi'] == approx(psi)
-	assert pdu['entityOrientation']['theta'] == approx(theta)
-	assert pdu['entityOrientation']['phi'] == approx(phi)
 
 def test_send_entity_state_pdu():
 	idn = 989
@@ -127,6 +113,8 @@ def test_send_entity_state_pdu():
 	roll_rot = 0.2
 	text = 'Hello'
 	dis_entity = 'generic_ship_container_class_small'
+
+	# Without lights and shapes
 	dis1.send_entity_state_pdu(idn, lat, lon, alt, yaw, pitch, roll,
 		u, v, w, yaw_rot, pitch_rot, roll_rot, dis_entity, text)
 	pdus = dis2.receive_pdus()
@@ -143,6 +131,26 @@ def test_send_entity_state_pdu():
 	assert pdu['entityOrientation']['phi'] == approx(phi)
 	assert pdu['entityMarking']['characters'] == [ord(i) for i in text] + \
 		[0]*(11 - len(text))
+	assert pdu['entityAppearance'] == '0'*32
+
+	# With light and shapes
+	dis1.send_entity_state_pdu(idn, lat, lon, alt, yaw, pitch, roll,
+		u, v, w, yaw_rot, pitch_rot, roll_rot, dis_entity, text, deck_lights=True,
+		nav_lights=1, nav_shapes=3)
+	pdus = dis2.receive_pdus()
+	assert len(pdus) == 1
+	pdu = pdus[0]
+	XYZ, euler = geoutils.to_dis([lat, lon, alt], [yaw, pitch, roll])
+	X, Y, Z = XYZ
+	psi, theta, phi = euler
+	ea = ['0']*32
+	ea[29] = '1' # Deck lights
+	ea[16:19] = ['0','0','1'] # Navigation lights
+	ea[24:27] = ['0','1','1'] # Navigation shapes
+	ea = ''.join(ea)
+	print(ea)
+	print(pdu['entityAppearance'])
+	assert pdu['entityAppearance'] == ea
 
 def test_send_stop_pdu():
 	dis1.send_stop_pdu()
@@ -152,8 +160,40 @@ def test_send_stop_pdu():
 	assert pdu['realWorldTime']['hour'] == get_h()
 	assert_tph(timestamp_to_tph(pdu['realWorldTime']['timePastHour']), get_tph())
 
+def test_send_transmitter_pdu():
+	idn = 1
+	ridn = 1
+	state = 2
+	x, y, z = (10,10,10)
+	lat, lon, alt = (0,0,0)
+	yaw, pitch, roll = (3.1416,0,0)
+	dis1.send_transmitter_pdu(idn, ridn, state, x, y, z, lat, lon, alt, yaw,
+		pitch, roll)
+	pdus = dis2.receive_pdus()
+	pdu = pdus[0]
+	assert pdu['pduHeader']['pduType'] == 25
+	assert pdu['frequency'] == 161975000
 
+def test_send_signal_pdu():
+	idn = 1
+	data = (1).to_bytes(4,'big')
+	dis1.send_signal_pdu(idn, data)
+	pdus = dis2.receive_pdus()
+	pdu = pdus[0]
+	assert pdu['pduHeader']['pduType'] == 26
+	assert pdu['dataLength'] == len(data)*8
+	assert pdu['data'] == data
 
+def test_send_receiver_pdu():
+	idn = 1
+	ridn = 1
+	state = 2
+	dis1.send_receiver_pdu(idn, ridn, state)
+	pdus = dis2.receive_pdus()
+	pdu = pdus[0]
+	assert pdu['pduHeader']['pduType'] == 27
+	assert pdu['receiverState'] == state
+	assert pdu['radioId'] == 1
 
 
 

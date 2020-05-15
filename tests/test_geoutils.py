@@ -17,19 +17,19 @@ def assert_coord(result, solution):
   for i in range(len(result)):
     assert pytest.approx(result[i]) == solution[i]
 
-def test_lla2xyz():
-  assert geo.lla2xyz((0,0,0)) == approx((a,0,0))
-  assert geo.lla2xyz((0,90,0)) == approx((0,a,0), abs=1e-6)
+def test_lla2XYZ():
+  assert geo.lla2XYZ((0,0,0)) == approx((a,0,0))
+  assert geo.lla2XYZ((0,90,0)) == approx((0,a,0), abs=1e-6)
   # 30,000 m over Adeleide
-  assert geo.lla2xyz((-34.9,138.5,30000)) == approx((-3.94e6, 3.49e6, -3.65e6), abs=1e4)
+  assert geo.lla2XYZ((-34.9,138.5,30000)) == approx((-3.94e6, 3.49e6, -3.65e6), abs=1e4)
   # 30,000 m over Sydney
-  assert geo.lla2xyz((-33.9,151.2,30000)) == approx((-4.67e6, 2.57e6, -3.55e6), abs=1e4)
+  assert geo.lla2XYZ((-33.9,151.2,30000)) == approx((-4.67e6, 2.57e6, -3.55e6), abs=1e4)
 
 def test_xyz2lla():
   assert geo.xyz2lla((a,0,0)) == approx((0,0,0))
   assert geo.xyz2lla((0,a,0)) == approx((0,90,0))
   pos = (30,30,30)
-  assert geo.xyz2lla(geo.lla2xyz(pos)) == approx(pos)
+  assert geo.xyz2lla(geo.lla2XYZ(pos)) == approx(pos)
 
 def test_qrotate():
   assert geo.qrotate((2,0,0),math.pi/2,(0,1,0)) == approx((0,0,-2), abs=1e-5)
@@ -74,5 +74,38 @@ def test_from_dis_cs():
   pos2, att2 = geo.from_dis(xyz, euler)
   assert pos2 == approx(pos, abs=1e-2)
   assert att == approx(att2, abs=1e-1)
+
+def test_xyz2XYZ():
+  position = (0,0,0)
+  attitude = (0,0,0) # Heading North, no pitch or roll
+  xyz = (10, 20, 30)
+  x, y , z = xyz
+  X, Y, Z = geo.lla2XYZ(position)
+  Xp, Yp, Zp = geo.xyz2XYZ(position, attitude, xyz)
+  assert Xp == X - z
+  assert Yp == Y + y
+  assert Zp == Z + x
+
+  position = (0,0,0)
+  attitude = (180,0,0) # Heading South, no pitch or roll.
+  xyz = (10, 20, 30)
+  x, y , z = xyz
+  X, Y, Z = geo.lla2XYZ(position)
+  Xp, Yp, Zp = geo.xyz2XYZ(position, attitude, xyz)
+  assert Xp == approx(X - z, abs=1e-2)
+  assert Yp == approx(Y - y, abs=1e-2)
+  assert Zp == approx(Z - x, abs=1e-2)
+
+  position = (0,90,0)
+  attitude = (180,0,0) # Heading South, no pitch or roll.
+  xyz = (10, 20, 30)
+  x, y , z = xyz
+  X, Y, Z = geo.lla2XYZ(position)
+  Xp, Yp, Zp = geo.xyz2XYZ(position, attitude, xyz)
+  assert Xp == approx(X + y, abs=1e-2)
+  assert Yp == approx(Y - z, abs=1e-2)
+  assert Zp == approx(Z - x, abs=1e-2)
+
+
 
 

@@ -28,12 +28,12 @@ def test_send_receive_start_pdu():
         'originatingEntityId':{
             'site': 1,
             'application':2,
-            'entity':1,        
+            'entity':1,
         },
         'receivingEntityId':{
             'site': 1,
             'application':2,
-            'entity':1,        
+            'entity':1,
         },
         'realWorldTime': {
             'hour':1213323,
@@ -66,12 +66,12 @@ def test_send_receive_stop_pdu():
         'originatingEntityId':{
             'site': 1,
             'application':2,
-            'entity':1,        
+            'entity':1,
         },
         'receivingEntityId':{
             'site': 1,
             'application':2,
-            'entity':1,        
+            'entity':1,
         },
         'realWorldTime': {
             'hour':1213323,
@@ -167,3 +167,127 @@ def test_send_receive_entity_state_pdu():
     assert len(data) == 144
     pdu_deserialized = dis6.deserialize(data)
     assert_pdus(pdu_state, pdu_deserialized)
+
+def test_send_receive_transmitter_pdu():
+    trans_pdu = {
+        'pduHeader': {
+        'protocolVersion': 5,
+        'excerciseId': 1,
+        'pduType':25,
+        'protocolFamily': 1,
+        'timestamp': 10,
+        'length': 10,
+        'padding':0,
+        },
+        'entityId': {
+            'site': 1,
+            'application':2,
+            'entity':1,
+        },
+        'radioId':33,
+        'radioEntityType': {
+            'entityKind': 1,
+            'domain': 2,
+            'country': 3,
+            'category':2,
+            'nomenclatureVersion': 3,
+            'nomenclature': 4,
+        },
+        'transmitState': 3,
+        'inputSource': 2,
+        'padding':'0'*16,
+        'antennaLocation': {
+            'X': 0,
+            'Y': 3,
+            'Z': 3
+        },
+        'relativeAntennaLocation': {
+            'x': 2,
+            'y': 5,
+            'z': 6
+        },
+        'antennaPatternType': 6,
+        'antennaPatternLength': 0,
+        'frequency': 23233,
+        'transmitFrequencyBandwidth':33.22,
+        'power': 32.233,
+        'modulationType': {
+            'spreadSpectrum': [False]*16,
+            'major': 14,
+            'detail': 12,
+            'system': 12
+        },
+        'cryptoSystem': 3,
+        'cryptoKeyId': 14,
+        'lengthOfModulationParameters': 0,
+        'padding2':'0'*24,
+    }
+    stream = dis6.serialize(trans_pdu)
+    data = stream.getvalue()
+    assert len(data) == 832/8
+    pdu_deserialized = dis6.deserialize(data)
+    assert_pdus(trans_pdu, pdu_deserialized)
+
+def test_send_receive_signal_pdu():
+    signal_pdu =  {
+        'pduHeader': {
+            'protocolVersion': 5,
+            'excerciseId': 1,
+            'pduType':26,
+            'protocolFamily': 1,
+            'timestamp': 10,
+            'length': 10,
+            'padding':0,
+        },
+        'entityId': {
+            'site': 1,
+            'application':2,
+            'entity':1,
+        },
+        'radioId':1,
+        'encodingScheme':'0'*16,
+        'TDLtype':2,
+        'sampleRate':1,
+        'dataLength':32,
+        'samples':1,
+        'data':(32).to_bytes(4,'big')
+    }
+    stream = dis6.serialize(signal_pdu)
+    data = stream.getvalue()
+    assert len(data) == (256 + signal_pdu['dataLength'])/8
+    pdu_deserialized = dis6.deserialize(data)
+    assert_pdus(signal_pdu, pdu_deserialized)
+
+def test_send_receive_receiver_pdu():
+    receiver_pdu = {
+        'pduHeader': {
+        'protocolVersion': 5,
+        'excerciseId': 1,
+        'pduType':27,
+        'protocolFamily': 1,
+        'timestamp': 10,
+        'length': 10,
+        'padding':0,
+        },
+        'entityId': {
+            'site': 1,
+            'application':2,
+            'entity':1,
+        },
+        'radioId':1,
+        'receiverState': 2,
+        'padding':'0'*16,
+        'receivedPower': 40.0,
+        'transmitterEntityId': {
+            'site': 1,
+            'application':2,
+            'entity':1,
+        },
+        'transmitterRadioId': 1,
+    }
+    stream = dis6.serialize(receiver_pdu)
+    data = stream.getvalue()
+    assert len(data) == 288/8
+    pdu_deserialized = dis6.deserialize(data)
+    assert_pdus(receiver_pdu, pdu_deserialized)
+
