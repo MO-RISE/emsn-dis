@@ -6,13 +6,27 @@ Used for testing the EMSN-DIS module.
 
 Usage:
 
-python test_simulator.py <local> <run time (sec)> <state_num)>
+python test_simulator.py local test_time state_nm
+
+where: 
+    local (0: false, 1: true)
+        Test locally?
+    test_time (int)
+         How long to run the test (seconds)
+    state_num (1, 2, or 3)
+        Number of one of the following testing states:
+            1: Generic small container ship outside Gothenburg, heading North, no speed
+            2: As (1), but heading South with a positive pitch of 5 deg.
+            3: As (1), but with lights indicating:
+                Not under command/Aground (red/red)
+                Restricted ability to maneuver (Ball/Diamond/Ball)
+                Deck lights on
 
 Run the simulator with multicast settings for local testing
->> python dummy_simulator.py 1 10 1
+>> python test_simulator.py 1 10 1
 
-Run the simulator with multicsat settings for EMSN
->> python dummy_simulator.py 0 10 1
+Run the simulator with multicast settings for EMSN
+>> python test_simulator.py 0 10 1
 
 
 """
@@ -142,16 +156,15 @@ def print_unknown_pdu(pdu):
     pduType = pdu['pduHeader']['pduType']
     print(f'protocolFamily: {protocolFamily}')
     print(f'pduType: {pduType}')
-    print_pdus_timestamp(pdu)
 
 class Simulator:
 
-    def __init__(self, siteId, applicationId, excerciseId, run_time, entity_state, move, ais, **kwargs):
+    def __init__(self, siteId, applicationId, excerciseId, test_time, entity_state, move, ais, **kwargs):
         self.dis = EmsnDis(siteId, applicationId, excerciseId, **kwargs)
         self.latest_state_update = time.time()
         self.entity_state = entity_state
         self.start_time = time.time()
-        self.run_time = run_time
+        self.test_time = test_time
         self.ais = ais
         self.dis.send_start_pdu()
         if ais:
@@ -198,7 +211,7 @@ class Simulator:
                 if self.ais:
                     data = (32).to_bytes(4,'big')
                     self.dis.send_signal_pdu(self.entity_state['idn'], data)
-            if time.time() - self.start_time > self.run_time:
+            if time.time() - self.start_time > self.test_time:
                 self.dis.send_stop_pdu()
                 break
 
@@ -247,7 +260,7 @@ if __name__ == "__main__":
     # Handle shutdown of this program
     signal.signal(signal.SIGINT, signal_handler)
 
-    local, run_time, state_num = sys.argv[1:5]
+    local, test_time, state_num = sys.argv[1:5]
 
     ais = False
     move = False
@@ -277,9 +290,9 @@ if __name__ == "__main__":
     excerciseId = 1
 
     if int(local):
-        sim = Simulator(siteId, applicationId, int(excerciseId), int(run_time), entity_state, move, ais, verbose=True)
+        sim = Simulator(siteId, applicationId, int(excerciseId), int(test_time), entity_state, move, ais, verbose=True)
     else:
-        sim = Simulator(siteId, applicationId, int(excerciseId), int(run_time), entity_sate, move, ais,  verbose=True, **multicast)
+        sim = Simulator(siteId, applicationId, int(excerciseId), int(test_time), entity_state, move, ais,  verbose=True, **multicast)
     print('Simulation stopped.')
 
 
